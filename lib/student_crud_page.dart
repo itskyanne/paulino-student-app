@@ -14,8 +14,10 @@ class _StudentCrudPageState extends State<StudentCrudPage> {
   final nameController = TextEditingController();
   final courseController = TextEditingController();
 
-  late final CollectionReference<Map<String, dynamic>> students;
-  late final Stream<QuerySnapshot<Map<String, dynamic>>> studentStream;
+  CollectionReference<Map<String, dynamic>>? students;
+  Stream<QuerySnapshot<Map<String, dynamic>>>? studentStream;
+  String? authError;
+  bool initializing = true;
 
   String? editingId;
   bool saving = false;
@@ -24,12 +26,43 @@ class _StudentCrudPageState extends State<StudentCrudPage> {
   @override
   void initState() {
     super.initState();
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    students = FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('students');
-    studentStream = students.snapshots();
+    _initAuthAndFirestore();
+  }
+
+  Future<void> _initAuthAndFirestore() async {
+    setState(() {
+      initializing = true;
+      authError = null;
+    });
+
+    try {
+      if (FirebaseAuth.instance.currentUser == null) {
+        await FirebaseAuth.instance.signInAnonymously();
+      }
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final collection = FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('students');
+        setState(() {
+          students = collection;
+          studentStream = collection.snapshots();
+          initializing = false;
+        });
+        return;
+      }
+    } catch (error) {
+      setState(() {
+        authError = error.toString();
+        initializing = false;
+      });
+      return;
+    }
+
+    setState(() {
+      initializing = false;
+    });
   }
 
   void showMessage(String message) {
@@ -49,7 +82,7 @@ class _StudentCrudPageState extends State<StudentCrudPage> {
 
   // CREATE or UPDATE
   Future<void> saveStudent() async {
-    if (saving || deleting) return;
+    if (saving || deleting || students == null) return;
     if (!formKey.currentState!.validate()) {
       return;
     }
@@ -67,10 +100,10 @@ class _StudentCrudPageState extends State<StudentCrudPage> {
     try {
       if (id == null) {
         // CREATE: generate a new document.
-        await students.add(data);
+        await students!.add(data);
       } else {
         // UPDATE: modify the selected document.
-        await students.doc(id).update(data);
+        await students!.doc(id).update(data);
       }
       if (!mounted) return;
       clearForm();
@@ -106,7 +139,7 @@ class _StudentCrudPageState extends State<StudentCrudPage> {
   Future<void> deleteStudent(
     QueryDocumentSnapshot<Map<String, dynamic>> document,
   ) async {
-    if (saving || deleting) return;
+    if (saving || deleting || students == null) return;
 
     setState(() {
       deleting = true;
@@ -141,7 +174,7 @@ class _StudentCrudPageState extends State<StudentCrudPage> {
 
       if (!mounted || confirmed != true) return;
 
-      await students.doc(document.id).delete();
+      await students!.doc(document.id).delete();
       if (!mounted) return;
 
       if (editingId == document.id) {
@@ -180,6 +213,57 @@ class _StudentCrudPageState extends State<StudentCrudPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (initializing) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Student Records')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (authError != null || students == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Student Records')),
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: Card(
+              color: Colors.amber.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        color: Colors.orange, size: 54),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Anonymous Authentication Required',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Please enable Anonymous Sign-in in your Firebase Console:\n'
+                      '1. Open Firebase Console -> Build -> Authentication\n'
+                      '2. Go to Sign-in method\n'
+                      '3. Enable Anonymous and Save',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: _initAuthAndFirestore,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retry Connection'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     final busy = saving || deleting;
 
     return Scaffold(
@@ -317,3 +401,4 @@ class _StudentCrudPageState extends State<StudentCrudPage> {
     );
   }
 }
+
