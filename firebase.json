@@ -1,1 +1,17 @@
-{"flutter":{"platforms":{"dart":{"lib/firebase_options.dart":{"projectId":"paulino-student-app","configurations":{"web":"1:532057358336:web:e7329e932bff57e11058e5"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "paulino-student-app",
+          "configurations": {
+            "web": "1:532057358336:web:e7329e932bff57e11058e5"
+          }
+        }
+      }
+    }
+  }
+}
