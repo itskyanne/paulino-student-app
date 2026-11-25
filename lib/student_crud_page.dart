@@ -265,6 +265,7 @@ class _StudentCrudPageState extends State<StudentCrudPage> {
     }
 
     final busy = saving || deleting;
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
       appBar: AppBar(
@@ -273,6 +274,33 @@ class _StudentCrudPageState extends State<StudentCrudPage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          if (currentUid != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.account_circle, size: 18, color: Colors.indigo),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Session UID: $currentUid',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade700,
+                        fontFamily: 'monospace',
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Text(
             editingId == null ? 'Add Student' : 'Edit Student',
             style: const TextStyle(
